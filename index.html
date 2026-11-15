@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>جاهز للإرسال</title>
+<style>
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:16px;color:#111}
+  .card{max-width:640px;margin:0 auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+  h1{font-size:19px;margin:0 0 12px}
+  .warn{background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;font-weight:700;margin:12px 0}
+  .lbl{font-size:13px;color:#555;margin:12px 0 4px}
+  .box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.7}
+  .btns{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  a.btn,button.btn{display:block;text-align:center;padding:13px;border-radius:10px;border:0;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit}
+  .p{background:#111;color:#fff}.s{background:#e5e7eb;color:#111}
+  #err{display:none;color:#b91c1c}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>✅ رسالة التقديم جاهزة</h1>
+  <div class="warn">📎 لا تنسى ترفق ملف السي في قبل ما ترسل!</div>
+  <div id="err">تعذّر قراءة البيانات. ارجع لتلقرام وانسخ الرسالة من هناك.</div>
+  <div id="data" style="display:none">
+    <div class="lbl">إلى</div><div class="box" id="to" dir="ltr" style="text-align:left"></div>
+    <div class="lbl">العنوان</div><div class="box" id="su"></div>
+    <div class="lbl">الرسالة</div><div class="box" id="body"></div>
+    <div class="btns">
+      <a class="btn p" id="gm" href="#">📧 افتح جيميل (الكمبيوتر)</a>
+      <a class="btn p" id="ml" href="#">📱 افتح تطبيق البريد (الجوال)</a>
+      <button class="btn s" id="cp">نسخ الرسالة</button>
+    </div>
+  </div>
+</div>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  function fail() { $("err").style.display = "block"; }
+  try {
+    const h = location.hash.slice(1);
+    if (!h) return fail();
+    const b64 = h.replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    let text;
+    if (typeof DecompressionStream === "function") {
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([bytes]).stream().pipeThrough(ds);
+      text = await new Response(stream).text();
+    } else { return fail(); }
+    const d = JSON.parse(text);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.to || "")) return fail();
+    $("to").textContent = d.to;
+    $("su").textContent = d.su || "";
+    $("body").textContent = d.body || "";
+    $("data").style.display = "block";
+
+    const q = "to=" + encodeURIComponent(d.to) + "&su=" + encodeURIComponent(d.su || "") +
+              "&body=" + encodeURIComponent(d.body || "");
+    const gmail = "https://mail.google.com/mail/?view=cm&fs=1&tf=cm&" + q;
+    const mailto = "mailto:" + encodeURIComponent(d.to) + "?subject=" + encodeURIComponent(d.su || "") +
+                   "&body=" + encodeURIComponent((d.body || "").replace(/\r?\n/g, "\r\n"));
+    $("gm").href = gmail;
+    $("ml").href = mailto;
+    $("cp").onclick = async () => {
+      try { await navigator.clipboard.writeText(d.body || ""); $("cp").textContent = "تم النسخ ✅"; }
+      catch (e) { $("cp").textContent = "انسخ النص يدوياً من الأعلى"; }
+    };
+    if (!/stay=1/.test(location.search)) {
+      const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setTimeout(() => { location.href = mobile ? mailto : gmail; }, 700);
+    }
+  } catch (e) { fail(); }
+})();
+</script>
+</body>
+</html>
