@@ -29,7 +29,8 @@
     <div class="lbl">الرسالة</div><div class="box" id="body" dir="auto"></div>
     <div class="btns">
       <a class="btn p" id="gm" href="#">📧 افتح جيميل (الكمبيوتر)</a>
-      <a class="btn p" id="ml" href="#">📱 افتح تطبيق البريد (الجوال)</a>
+      <a class="btn p" id="ga" href="#">📱 افتح تطبيق جيميل (الجوال)</a>
+      <a class="btn s" id="ml" href="#">✉️ تطبيق البريد الافتراضي</a>
       <button class="btn s" id="cp">نسخ الرسالة</button>
     </div>
   </div>
@@ -62,15 +63,24 @@
     const gmail = "https://mail.google.com/mail/?view=cm&fs=1&tf=cm&" + q;
     const mailto = "mailto:" + encodeURIComponent(d.to) + "?subject=" + encodeURIComponent(d.su || "") +
                    "&body=" + encodeURIComponent((d.body || "").replace(/\r?\n/g, "\r\n"));
+    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const gapp = "googlegmail:///co?" + q.replace("&su=", "&subject=");
     $("gm").href = gmail;
     $("ml").href = mailto;
+    $("ga").href = ios ? gapp : mailto;
     $("cp").onclick = async () => {
       try { await navigator.clipboard.writeText(d.body || ""); $("cp").textContent = "تم النسخ ✅"; }
       catch (e) { $("cp").textContent = "انسخ النص يدوياً من الأعلى"; }
     };
     if (!/stay=1/.test(location.search)) {
       const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      setTimeout(() => { location.href = mobile ? mailto : gmail; }, 700);
+      setTimeout(() => {
+        if (!mobile) { location.href = gmail; return; }
+        if (!ios) { location.href = mailto; return; }
+        // آيفون: نجرب تطبيق جيميل، وإذا ما انفتح نرجع للبريد الافتراضي
+        location.href = gapp;
+        setTimeout(() => { if (!document.hidden) location.href = mailto; }, 1500);
+      }, 700);
     }
   } catch (e) { fail(); }
 })();
